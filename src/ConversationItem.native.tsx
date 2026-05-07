@@ -2,100 +2,175 @@
  * akong ConversationItem · React Native 实现
  *
  * Metro bundler 默认按 `.native.tsx` 后缀解析 RN 端 · `.tsx` 解析 Web 端
- * 用方 `import { ConversationItem } from '@akong/button'` 自动取对应平台
+ * 用方 `import { ConversationItem } from '@akong/conversation-item'` 自动取对应平台
  */
 
-import { Pressable, Text, View, ActivityIndicator, useColorScheme } from 'react-native'
+import { Pressable, Text, View, Image, useColorScheme } from 'react-native'
 import { tokens } from '@akong/tokens'
 import type { ConversationItemProps } from './ConversationItem.types'
-
-const sizes = {
-  sm: { height: 32, paddingH: tokens.space[3], fontSize: tokens.text.sm },
-  md: { height: 40, paddingH: tokens.space[4], fontSize: tokens.text.base },
-  lg: { height: 48, paddingH: tokens.space[5], fontSize: tokens.text.md },
-} as const
-
-function variantStyles(variant: NonNullable<ConversationItemProps['variant']>, scheme: 'light' | 'dark') {
-  const t = scheme === 'dark' ? tokens.dark : tokens.light
-  switch (variant) {
-    case 'primary':
-      return { bg: t.fg, fg: t.fgInverse }
-    case 'secondary':
-      return { bg: t.bgSubtle, fg: t.fg }
-    case 'ghost':
-      return { bg: 'transparent', fg: t.fg }
-    case 'destructive':
-      return { bg: t.accent, fg: t.accentFg }
-    case 'link':
-      return { bg: 'transparent', fg: t.fg }
-  }
-}
+import { formatUnread } from './ConversationItem.behavior'
 
 export function ConversationItem(props: ConversationItemProps) {
   const {
-    variant = 'primary',
-    size = 'md',
-    disabled = false,
-    loading = false,
-    fullWidth = false,
-    iconLeft,
-    iconRight,
-    children,
-    onClick,
+    avatar,
+    name,
+    lastMessage,
+    time,
+    unread,
+    pinned = false,
+    muted = false,
+    online = false,
     onPress,
+    onLongPress,
     ariaLabel,
   } = props
 
   const scheme = (useColorScheme() ?? 'light') as 'light' | 'dark'
-  const sz = sizes[size]
-  const v = variantStyles(variant, scheme)
+  const t = scheme === 'dark' ? tokens.dark : tokens.light
 
-  const handle = () => {
-    if (disabled || loading) return
-    onClick?.()
-    onPress?.()
-  }
+  const unreadText = formatUnread(unread)
+  const initial = name.trim().charAt(0).toUpperCase() || '?'
 
   return (
     <Pressable
-      onPress={handle}
-      accessibilityLabel={ariaLabel}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
+      accessibilityLabel={ariaLabel ?? `${name} ${lastMessage}`}
       accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      disabled={disabled || loading}
       style={({ pressed }: { pressed: boolean }) => ({
-        height: variant === 'link' ? undefined : sz.height,
-        paddingHorizontal: variant === 'link' ? 0 : sz.paddingH,
-        backgroundColor: v.bg,
-        borderRadius: variant === 'link' ? 0 : tokens.radius.full,
         flexDirection: 'row' as const,
         alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-        alignSelf: (fullWidth ? 'stretch' : 'flex-start') as 'stretch' | 'flex-start',
-        opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
-        gap: tokens.space[2],
+        gap: tokens.space[3],
+        minHeight: 64,
+        paddingVertical: tokens.space[3],
+        paddingHorizontal: tokens.space[4],
+        backgroundColor: t.bg,
+        opacity: pressed ? 0.7 : 1,
       })}
     >
-      {loading ? (
-        <ActivityIndicator color={v.fg as string} />
-      ) : (
-        <>
-          {iconLeft && <View>{iconLeft}</View>}
-          {children && (
+      {/* avatar */}
+      <View style={{ position: 'relative', width: 48, height: 48 }}>
+        {avatar ? (
+          <Image
+            source={{ uri: avatar }}
+            style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: t.bgSubtle }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: t.bgSubtle,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <Text
               style={{
-                color: v.fg as string,
-                fontSize: sz.fontSize,
-                fontWeight: tokens.weight.medium,
-                textDecorationLine: variant === 'link' ? 'underline' : 'none',
+                color: t.fgMuted,
+                fontSize: tokens.text.md,
+                fontWeight: tokens.weight.semibold,
               }}
             >
-              {children}
+              {initial}
+            </Text>
+          </View>
+        )}
+        {online && (
+          <View
+            style={{
+              position: 'absolute',
+              right: 0,
+              bottom: 0,
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: '#22c55e',
+              borderWidth: 2,
+              borderColor: t.bg,
+            }}
+          />
+        )}
+      </View>
+
+      {/* body */}
+      <View style={{ flex: 1, minWidth: 0, flexDirection: 'column', gap: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[1] }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              flex: 1,
+              fontSize: tokens.text.base,
+              fontWeight: tokens.weight.semibold,
+              color: t.fg,
+            }}
+          >
+            {name}
+          </Text>
+          {pinned && (
+            <Text style={{ fontSize: 12, color: t.fgMuted }} accessibilityLabel="pinned">
+              📌
             </Text>
           )}
-          {iconRight && <View>{iconRight}</View>}
-        </>
-      )}
+          {muted && (
+            <Text style={{ fontSize: 12, color: t.fgMuted }} accessibilityLabel="muted">
+              🔕
+            </Text>
+          )}
+        </View>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontSize: tokens.text.sm,
+            color: muted ? t.fgMuted : t.fgSubtle,
+          }}
+        >
+          {lastMessage}
+        </Text>
+      </View>
+
+      {/* meta */}
+      <View
+        style={{
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 4,
+          marginLeft: tokens.space[2],
+        }}
+      >
+        {time ? (
+          <Text style={{ fontSize: tokens.text.xs, color: t.fgMuted }}>{time}</Text>
+        ) : (
+          // 占位 · 让 unread 跟有 time 时一致竖直位置
+          <View style={{ height: tokens.text.xs * 1.4 }} />
+        )}
+        {unreadText !== null && (
+          <View
+            style={{
+              minWidth: 18,
+              height: 18,
+              paddingHorizontal: 6,
+              borderRadius: 9,
+              backgroundColor: muted ? t.bgHover : t.accent,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: tokens.text.xs,
+                fontWeight: tokens.weight.semibold,
+                color: muted ? t.fgMuted : t.accentFg,
+                lineHeight: tokens.text.xs * 1.1,
+              }}
+            >
+              {unreadText}
+            </Text>
+          </View>
+        )}
+      </View>
     </Pressable>
   )
 }
