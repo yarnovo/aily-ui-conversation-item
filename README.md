@@ -1,5 +1,7 @@
 # @akong/conversation-item
 
+> ← 回 [akong design system](https://yarnovo.github.io/akong-core/) 总站
+
 akong ConversationItem · 极简 · 跨端 (Web + React Native) · 类微信聊天列表项
 
 ## Demo
